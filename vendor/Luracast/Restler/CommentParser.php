@@ -2,6 +2,7 @@
 namespace Luracast\Restler;
 
 use Exception;
+
 /**
  * Parses the PHPDoc comments for metadata. Inspired by `Documentor` code base.
  *
@@ -12,7 +13,7 @@ use Exception;
  * @copyright  2010 Luracast
  * @license    http://www.opensource.org/licenses/lgpl-license.php LGPL
  * @link       http://luracast.com/products/restler/
- * @version    3.0.0rc4
+ * @version    3.0.0rc5
  */
 class CommentParser
 {
@@ -103,7 +104,7 @@ class CommentParser
      *
      * @static
      *
-     * @param $comment PhpDoc style comment
+     * @param string $comment PhpDoc style comment
      *
      * @return string comments with out the tags
      */
@@ -192,7 +193,7 @@ class CommentParser
         }
         foreach ($params as $key => $line) {
             list(, $param, $value) = preg_split('/\@|\s/', $line, 3)
-                + array('', '', '');
+            + array('', '', '');
             list($value, $embedded) = $this->parseEmbeddedData($value);
             $value = array_filter(preg_split('/\s+/ms', $value));
             $this->parseParam($param, $value, $embedded);
@@ -209,7 +210,7 @@ class CommentParser
      */
     private function parseParam($param, array $value, array $embedded)
     {
-        $data = &$this->_data;
+        $data = & $this->_data;
         $allowMultiple = false;
         switch ($param) {
             case 'param' :
@@ -223,15 +224,15 @@ class CommentParser
                 $value = $this->formatReturn($value);
                 break;
             case 'class' :
-                $data = &$data[$param];
+                $data = & $data[$param];
                 list ($param, $value) = $this->formatClass($value);
                 break;
             case 'access' :
-                $value = $value [0];
+                $value = reset($value);
                 break;
             case 'expires' :
             case 'status' :
-                $value = intval($value[0]);
+                $value = intval(reset($value));
                 break;
             case 'throws' :
                 $value = $this->formatThrows($value);
@@ -297,14 +298,21 @@ class CommentParser
     {
         $data = array();
 
-        while (preg_match('/{@(\w+)\s([^}]*)}/ms', $subject, $matches)) {
+        //parse {@pattern } tags specially
+        while (preg_match('|(?s-m)({@pattern (/.+/[imsxuADSUXJ]*)})|', $subject, $matches)) {
+            $subject = str_replace($matches[0], '', $subject);
+            $data['pattern'] = $matches[2];
+        }
+        while (preg_match('/{@(\w+)\s?([^}]*)}/ms', $subject, $matches)) {
             $subject = str_replace($matches[0], '', $subject);
             if ($matches[2] == 'true' || $matches[2] == 'false') {
                 $matches[2] = $matches[2] == 'true';
+            } elseif ($matches[2] == '') {
+                $matches[2] = true;
             }
-            if ($matches[1] != 'pattern'
-                && false !== strpos($matches[2], static::$arrayDelimiter)
-            ) {
+            if ($matches[1] == 'pattern') {
+                throw new Exception('Inline pattern tag should follow {@pattern /REGEX_PATTERN_HERE/} format and can optionally include PCRE modifiers following the ending `/`');
+            } elseif (false !== strpos($matches[2], static::$arrayDelimiter)) {
                 $matches[2] = explode(static::$arrayDelimiter, $matches[2]);
             }
             $data[$matches[1]] = $matches[2];
@@ -318,7 +326,7 @@ class CommentParser
                 && !empty ($matches[1])
             ) {
                 $extension = $matches[1];
-                $formatMap =  $this->restler->getFormatMap();
+                $formatMap = $this->restler->getFormatMap();
                 if (isset ($formatMap[$extension])) {
                     /**
                      * @var \Luracast\Restler\Format\iFormat
@@ -387,7 +395,7 @@ class CommentParser
         }
         $value = implode(' ', $value);
         return array(
-            $param,
+            ltrim($param, '\\'),
             array('description' => $value)
         );
     }
@@ -458,4 +466,3 @@ class CommentParser
         return $r;
     }
 }
-

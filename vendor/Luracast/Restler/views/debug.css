@@ -20,7 +20,7 @@ body {
 
 article {
     left: 20px;
-    right: 300px;
+    right: 20px;
     position: absolute;
     overflow: auto;
 }
@@ -433,4 +433,9 @@ icon:after {
     top: 8px;
     left: 2px;
 
+}
+
+li > strong {
+    min-width: 80px;
+    display: inline-block;
 }
